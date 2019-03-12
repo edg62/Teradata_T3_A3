@@ -1,0 +1,27 @@
+Aster tablesize and table owner SQL
+It's time for our developers to clean up after themselves. I want to produce a list of users, schemas, tables, size. Am I overcomplicating this? I've unsuccessfully tried the following:
+
+CREATE dimension TABLE table_space AS SELECT schema, relname, SUM(size_on_disk)::DOUBLE AS size_on_disk
+FROM nc_tablesize_details(ON (SELECT 1) PARTITION BY 1)
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+SELECT a.*,b.* FROM table_space a, nc_all_tables b, nc_all_schemas c
+WHERE a.schema = c.schemaname AND c.schemaid = b.schemaid;
+which gave me the error:
+SELECT Failed. 34:  (34) ERROR: queries involving both system tables and non-system tables not supported. 
+I also tried:
+
+SELECT a.*,b.* FROM (SELECT schema, relname, SUM(size_on_disk)::DOUBLE AS size_on_disk
+FROM nc_tablesize_details(ON (SELECT 1) PARTITION BY 1)
+GROUP BY 1, 2
+ORDER BY 1, 2) a, nc_all_tables b, nc_all_schemas c
+WHERE a.schema = c.schemaname AND c.schemaid = b.schemaid;
+which gave me:
+SELECT Failed. 34:  (34) ERROR: queries involving both system tables and sqlmr functions not supported. 
+So I thought I'll just create copies of the system tables and select from them so I tried:
+
+CREATE dimension TABLE all_tabs AS SELECT * FROM nc_all_tables
+
+and found that:
+CREATE TABLE Failed. 34:  (34) ERROR: create table statement may not reference system tables. 
